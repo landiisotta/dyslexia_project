@@ -10,13 +10,34 @@ plot.path <- file.path('/media/data/dyslexia_project/plot')
 load(file=file.path(data.path,'db.wisc3wisc4.RData'))
 load(file=file.path(data.path,'db.dysl.RData'))
 
-db.dysl <- db.wisc3wisc4 
 
 ##vectors with names to access data
 db.fact <- c('id','class','comorb','age')
 dde.feat <- c('wspeed','wacc', 'nwspeed', 'nwacc')
 wisc.score <- c('IQ', 'VCI', 'PRI', 'WMI', 'PSI')
 wisc.sub <- c('dc', 'so', 'mc', 'cf', 'vc', 'co', 'rs')
+
+##color vectors
+mycol <- colors()[c(139,490,552)]##h-->3, m-->2, l-->1
+
+##databases tmp for plots
+stk.db_dde <- stack(subset(db.dysl,select=c(dde.feat)))
+
+#######################################subjects out##############################
+##removing outliers visually selected (subjects 5, 673)
+out1 <- c('5', '673')
+db.dysl.no_out <- db.dysl[-which(db.dysl$id%in%out1),]
+##save(file=file.path(data.path,'db.dysl.no_out.RData'),db.dysl.no_out)
+
+stk.db_dde.no_out<- stack(subset(db.dysl.no_out,select=c(dde.feat)))
+stk.db_wisc.no_out<- stack(subset(db.dysl.no_out,select=c(wisc.sub)))
+
+
+##################################################################################
+##################################################################################
+##################################################################################
+
+db.dysl <- db.wisc3wisc4 
 
 names(db.dysl) <- c(db.fact, dde.feat, wisc.score, wisc.sub)
 db.dysl$class <- as.character(db.dysl$class)
@@ -31,12 +52,26 @@ db.dysl$comorb <- as.factor(db.dysl$comorb)
 
 ##descriptive stats
 summary(db.dysl)
+apply(db.dysl,2,sd)
 
-##color vectors
-mycol <- colors()[c(139,490,552)]##h-->3, m-->2, l-->1
+##boxplot age
+bw.age <- bwplot(db.dysl$age,
+                 fill='grey90',
+                 pch='|',
+                 horizontal=TRUE,
+                 xlab=list('age',cex=1.5),
+                 par.settings=list(
+                   box.rectangle=list(col='black',lwd=1.5),
+                   box.umbrella=list(col='black',lwd=1.5)),
+                 panel=function(x,y,...){
+                   panel.bwplot(x,y,pch='|',fill='grey90')
+                   panel.points(x,y,pch=19,col='black')},
+                   scales=list(x=list(cex=1.5),y=list(cex=1.5)))
+bw.age
 
-##databases tmp for plots
-stk.db_dde <- stack(subset(db.dysl,select=c(dde.feat)))
+pdf(file=file.path(plot.path,'bw_age.pdf'),width=7,height=2)
+bw.age
+dev.off()
 
 ###################################################################################
 ################################pairs graphs#######################################
@@ -64,6 +99,31 @@ pairs(subset(db.dysl,select=c(dde.feat,wisc.sub)),
 ##pairs in pdf
 pdf(file=file.path(plot.path,'pairs.pdf'),width=13,height=13)
 pairs(subset(db.dysl,select=c(dde.feat,wisc.sub)),
+      lower.panel=panel.cor,
+      pch=21,
+      main='',
+      cex.labels=2,
+      bg=mycol[unclass(db.dysl$class)],
+      panel=panel.smooth,
+      cex.axis=1.5)
+dev.off()
+
+
+
+
+######################################pairs no outliers##########################
+pairs(subset(db.dysl.no_out,select=c(dde.feat,wisc.sub)),
+      lower.panel=panel.cor,
+      pch=21,
+      main='',
+      cex.labels=2,
+      bg=mycol[unclass(db.dysl.no_out$class)],
+      panel=panel.smooth,
+      cex.axis=1.5)
+
+##pairs in pdf
+pdf(file=file.path(plot.path,'pairs_no_out.pdf'),width=13,height=13)
+pairs(subset(db.dysl.no_out,select=c(dde.feat,wisc.sub)),
       lower.panel=panel.cor,
       pch=21,
       main='',
@@ -146,36 +206,6 @@ dist_dde.part
 dev.off()
 
 
-#######################################subjects out##############################
-##removing outliers visually selected (subjects 5, 673)
-out1 <- c('5', '673')
-db.dysl.no_out <- db.dysl[-which(db.dysl$id%in%out1),]
-##save(file=file.path(data.path,'db.dysl.no_out.RData'),db.dysl.no_out)
-
-stk.db_dde.no_out<- stack(subset(db.dysl.no_out,select=c(dde.feat)))
-
-
-######################################pairs no outliers##########################
-pairs(subset(db.dysl.no_out,select=c(dde.feat,wisc.sub)),
-      lower.panel=panel.cor,
-      pch=21,
-      main='',
-      cex.labels=2,
-      bg=mycol[unclass(db.dysl.no_out$class)],
-      panel=panel.smooth,
-      cex.axis=1.5)
-
-##pairs in pdf
-pdf(file=file.path(plot.path,'pairs_no_out.pdf'),width=13,height=13)
-pairs(subset(db.dysl.no_out,select=c(dde.feat,wisc.sub)),
-      lower.panel=panel.cor,
-      pch=21,
-      main='',
-      cex.labels=2,
-      bg=mycol[unclass(db.dysl$class)],
-      panel=panel.smooth,
-      cex.axis=1.5)
-dev.off()
 
 
 #################################distribution without outliers##################
@@ -274,7 +304,7 @@ bw_dde.no_out<- bwplot(ind~values,
                        scales=list(x=list(cex=1.5),y=list(cex=1.5)))
 bw_dde.no_out
 
-pdf(file=file.path(plot.path,'bw_dde.no_out.pdf'),width=7,height=7)
+pdf(file=file.path(plot.path,'bw_dde_no_out.pdf'),width=7,height=7)
 bw_dde.no_out
 dev.off()
 
@@ -304,7 +334,7 @@ bw.dde.no_out_class <- bwplot(values~class|factor(ind),
                           }
                           if(panel.number()==2){
                             panel.bwplot(x,y,pch='|',...)
-                            for(g in unique(groups)){
+                            for(g in levels(groups)){
                               id <- groups==g 
                               x1 <- x[id]
                               y1 <- y[id]
@@ -314,7 +344,7 @@ bw.dde.no_out_class <- bwplot(values~class|factor(ind),
                           }
                           if(panel.number()==3){
                             panel.bwplot(x,y,pch='|',...)
-                            for(g in unique(groups)){
+                            for(g in levels(groups)){
                               id <- groups==g 
                               x1 <- x[id]
                               y1 <- y[id]
@@ -324,7 +354,7 @@ bw.dde.no_out_class <- bwplot(values~class|factor(ind),
                           }
                           if(panel.number()==4){
                             panel.bwplot(x,y,pch='|',...)
-                            for(g in unique(groups)){
+                            for(g in levels(groups)){
                               id <- groups==g 
                               x1 <- x[id]
                               y1 <- y[id]
@@ -343,13 +373,140 @@ bw.dde.no_out_class <- bwplot(values~class|factor(ind),
 bw.dde.no_out_class
 
 ##outliers:
-##nwacc--> -9
-##nwspeed--> -7, -5.42, -4.80
-##wacc--> -6, -10.3, -9.5, -10.0
-##wspeed--> -4.5, -13.43
+##nwacc--> none
+##nwspeed--> -5.42, -5.42, -4.80/ -7 (subj-->537, 591, 768/ 968)
+##wacc--> -6/  -10.3, -10.0 (subj--->638/ 1053, 336)
+##wspeed--> -4.5 (subj---> 768)
 
-pdf(file=file.path(plot.path,'bw.dde.no_out_class.pdf'),width=14,height=7)
+subj.out <- c('336', '537', '591', '638', '768', '968', '1053')
+
+pdf(file=file.path(plot.path,'bw_dde_no_out_class.pdf'),width=14,height=7)
 bw.dde.no_out_class
+dev.off()
+
+
+
+bw_wisc.no_out<- bwplot(ind~values,
+                       data=stk.db_wisc.no_out,
+                       horizontal=TRUE,
+                       xlab=list('subscale scores',cex=1.5),
+                       par.settings=list(
+                         box.rectangle=list(col='black',lwd=1.5),
+                         box.umbrella=list(col='black',lwd=1.5)),
+                       fill='grey90',
+                       panel=function(x,y,col=mycol,db=db.dysl.no_out,...){
+                         panel.bwplot(x,y,
+                                      fill='grey80',
+                                      pch='|')
+                         panel.points(x,y,col=mycol[unclass(db.dysl.no_out$class)],
+                                      pch=19)},
+                       key=list(text=list(c('l','m','h'),cex=1.5),
+                         points=list(pch=c(19,19,19),col=mycol,
+                           rep('black',3),cex=c(1.5,1.5,1.5)),
+                         columns=3),
+                       scales=list(x=list(cex=1.5),y=list(cex=1.5)))
+bw_wisc.no_out
+
+pdf(file=file.path(plot.path,'bw_wisc_no_out.pdf'),width=7,height=7)
+bw_wisc.no_out
+dev.off()
+
+
+##boxplot by class and dde scores without out1
+stk.db_wisc.no_out$class <- rep(db.dysl.no_out$class,7)
+
+bw.wisc.no_out_class <- bwplot(values~class|factor(ind),
+                        data=stk.db_wisc.no_out,
+                        fill='grey80',
+                        ylab=list('subscale scores',cex=1.5),
+                        par.settings=list(
+                          box.rectangle=list(lwd=2,col='black'),
+                          box.umbrella=list(lwd=2,col='black')),
+                        panel=function(x,y,col=mycol,
+                          groups=stk.db_wisc.no_out$class,...){
+                          i <- 1
+                          if(panel.number()==1){
+                            panel.bwplot(x,y,pch='|',...)
+                            for(g in levels(groups)){
+                              id <- groups==g 
+                              x1 <- x[id]
+                              y1 <- y[id]
+                              panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+                              #print(boxplot.stats(y1)$out)
+                              i <- i+1}
+                          }
+                          if(panel.number()==2){
+                            panel.bwplot(x,y,pch='|',...)
+                            for(g in levels(groups)){
+                              id <- groups==g 
+                              x1 <- x[id]
+                              y1 <- y[id]
+                              panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+                              #print(boxplot.stats(y1)$out)
+                              i <- i+1}
+                          }
+                          if(panel.number()==3){
+                            panel.bwplot(x,y,pch='|',...)
+                            for(g in levels(groups)){
+                              id <- groups==g 
+                              x1 <- x[id]
+                              y1 <- y[id]
+                              panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+                             #print(boxplot.stats(y1)$out)
+                              i <- i+1}
+                          }
+                          if(panel.number()==4){
+                            panel.bwplot(x,y,pch='|',...)
+                            for(g in levels(groups)){
+                              id <- groups==g 
+                              x1 <- x[id]
+                              y1 <- y[id]
+                              panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+                              #print(boxplot.stats(y1)$out)
+                             i <- i+1}
+                          }
+                          if(panel.number()==5){
+                            panel.bwplot(x,y,pch='|',...)
+                            for(g in levels(groups)){
+                              id <- groups==g 
+                              x1 <- x[id]
+                              y1 <- y[id]
+                              panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+                              #print(boxplot.stats(y1)$out)
+                              i <- i+1}
+                          }
+                          if(panel.number()==6){
+                            panel.bwplot(x,y,pch='|',...)
+                            for(g in levels(groups)){
+                              id <- groups==g 
+                              x1 <- x[id]
+                              y1 <- y[id]
+                              panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+                              #print(boxplot.stats(y1)$out)
+                              i <- i+1}
+                          }
+                          if(panel.number()==7){
+                            panel.bwplot(x,y,pch='|',...)
+                            for(g in levels(groups)){
+                              id <- groups==g 
+                              x1 <- x[id]
+                              y1 <- y[id]
+                              panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+                              #print(boxplot.stats(y1)$out)
+                              i <- i+1}
+                          }
+                        },
+                        key=list(text=list(c('l','m','h'),cex=1.5),
+                          points=list(pch=c(19,19,19),col=mycol,
+                            rep('black',3),cex=c(1.5,1.5,1.5)),
+                          columns=3),
+                        scales=list(x=list(
+                                      #labels=c('l','m','h')
+                                      cex=1.5),y=list(cex=1.5)))
+bw.wisc.no_out_class
+
+pdf(file=file.path(plot.path,'bw_wisc_no_out_class.pdf'),width=20,height=10)
+bw.wisc.no_out_class
 dev.off()
 
 
@@ -417,10 +574,14 @@ scat.dde.no_out_nw <- xyplot(nwspeed~nwacc,
                                                       cex=1.5)))
 scat.dde.no_out_nw
 
-pdf(file=file.path(plot.path,'scat.dde.no_out.pdf'),width=7,height=7)
+pdf(file=file.path(plot.path,'scat_ddew_no_out.pdf'),width=7,height=7)
 scat.dde.no_out_w
+dev.off()
+
+pdf(file=file.path(plot.path,'scat_ddenw_no_out.pdf'),width=7,height=7)
 scat.dde.no_out_nw
 dev.off()
+
 
 
 ##################################################
@@ -491,8 +652,11 @@ dev.off()
 ################################################################################
 ###############comparison between WISC subscales and dde scores#################
 ################################################################################
+##does not seem to have a relation
+##interesting--> wacc for cf, wacc and nwacc for vc
 
-mycol2 <- colors()[c(490,139)]
+mycol2 <- colors()[c(139,490,552)]
+mypch <- c(17,18,19)
 
 db <- db.dysl.no_out
 ##quantiles of wisc subscales
@@ -506,77 +670,142 @@ db$dc.quant <- 'q'
 db$dc.quant[which(db$dc<=q1[1])] <- 'q1'
 db$dc.quant[which(db$dc>=q3[1])] <- 'q3'
 
-ws.dc <- xyplot(wspeed~dc,
+ws.dc <- xyplot(dc~wspeed,
                 groups=dc.quant,
-                data=subset(db,subset=db$dc.quant=='q1' | db$dc.quant=='q3'),
+                data=db,
+                #subset(db,subset=db$dc.quant=='q1' | db$dc.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }
+                    i <- i+1
+                  }
+                },
                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],rep(19,3)),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 ws.dc
 
 
-nws.dc <- xyplot(nwspeed~dc,
+
+nws.dc <- xyplot(dc~nwspeed,
                  groups=dc.quant,
-                 data=subset(db,subset=db$dc.quant=='q1' | db$dc.quant=='q3'),
+                 data=db,
+                 #subset(db,subset=db$dc.quant=='q1' | db$dc.quant=='q3'),
                  xlab=list(cex=1.5),
                  ylab=list(cex=1.5),
                  panel=function(x,y,groups,col=mycol2,...){
                    i <- 1
-                   for(g in unique(groups)){
+                   for(g in levels(as.factor(groups))){
                      id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                     i <- i+1}},
+                     j <- 1
+                    for(h in levels(db$class)){
+                      #print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
                  scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                 key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],rep(19,3)),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 nws.dc
+
+
 
 ##so subscale (no outliers)
 db$so.quant <- 'q'
 db$so.quant[which(db$so<=q1[2])] <- 'q1'
 db$so.quant[which(db$so>=q3[2])] <- 'q3'
 
-ws.so <- xyplot(wspeed~so, groups=so.quant,
-                data=subset(db,subset=db$so.quant=='q1' | db$so.quant=='q3'),
+ws.so <- xyplot(so~wspeed, groups=so.quant,
+                data=db,
+                #subset(db,subset=db$so.quant=='q1' | db$so.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                    cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      #print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],rep(19,3)),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 ws.so
 
-nws.so <- xyplot(nwspeed~so, groups=so.quant,
-                 data=subset(db,subset=db$so.quant=='q1' | db$so.quant=='q3'),
+
+
+nws.so <- xyplot(so~nwspeed,
+                 groups=so.quant,
+                 data=db,
+                 #subset(db,subset=db$so.quant=='q1' | db$so.quant=='q3'),
                  xlab=list(cex=1.5),
                  ylab=list(cex=1.5),
                  panel=function(x,y,groups,col=mycol2,...){
                    i <- 1
-                   for(g in unique(groups)){
+                   for(g in levels(as.factor(groups))){
                      id <- groups==g
-                     panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                     i <- i+1}},
+                     j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
                  scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                 key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[2],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 nws.so
+
 
 
 ##mc subscale
@@ -584,37 +813,67 @@ db$mc.quant <- 'q'
 db$mc.quant[which(db$mc<=q1[3])] <- 'q1'
 db$mc.quant[which(db$mc>=q3[3])] <- 'q3'
 
-ws.mc <- xyplot(wspeed~mc, groups=mc.quant,
-                data=subset(db,subset=db$mc.quant=='q1' | db$mc.quant=='q3'),
+ws.mc <- xyplot(mc~wspeed,
+                groups=mc.quant,
+                data=db,
+                #subset(db,subset=db$mc.quant=='q1' | db$mc.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 ws.mc
 
 
-nws.mc <- xyplot(nwspeed~mc, groups=mc.quant,
-                data=subset(db,subset=db$mc.quant=='q1' | db$mc.quant=='q3'),
+
+nws.mc <- xyplot(mc~nwspeed, groups=mc.quant,
+                data=db,
+                #subset(db,subset=db$mc.quant=='q1' | db$mc.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                 key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 nws.mc
 
 
@@ -624,202 +883,368 @@ db$cf.quant <- 'q'
 db$cf.quant[which(db$cf<=q1[4])] <- 'q1'
 db$cf.quant[which(db$cf>=q3[4])] <- 'q3'
 
-ws.cf <- xyplot(wspeed~cf, groups=cf.quant,
-                data=subset(db,subset=db$cf.quant=='q1' | db$cf.quant=='q3'),
+ws.cf <- xyplot(cf~wspeed, groups=cf.quant,
+                data=db,
+                ##subset(db,subset=db$cf.quant=='q1' | db$cf.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 ws.cf
 
 
-nws.cf <- xyplot(nwspeed~cf, groups=cf.quant,
-                data=subset(db,subset=db$cf.quant=='q1' | db$cf.quant=='q3'),
+
+nws.cf <- xyplot(cf~nwspeed, groups=cf.quant,
+                data=db,
+                 ##subset(db,subset=db$cf.quant=='q1' | db$cf.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                 key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 nws.cf
+                
 
 
 wa.cf <- xyplot(wacc~cf, groups=cf.quant,
-                data=subset(db,subset=db$cf.quant=='q1' | db$cf.quant=='q3'),
+                data=db,
+                ##subset(db,subset=db$cf.quant=='q1' | db$cf.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 wa.cf
+
 
 ##vc subscale
 db$vc.quant <- 'q'
-db$vc.quant[which(db$vc<=q1[4])] <- 'q1'
-db$vc.quant[which(db$vc>=q3[4])] <- 'q3'
+db$vc.quant[which(db$vc<=q1[5])] <- 'q1'
+db$vc.quant[which(db$vc>=q3[5])] <- 'q3'
 
-ws.vc <- xyplot(wspeed~vc, groups=vc.quant,
-                data=subset(db,subset=db$vc.quant=='q1' | db$vc.quant=='q3'),
+ws.vc <- xyplot(vc~wspeed, groups=vc.quant,
+                data=db,
+                ##subset(db,subset=db$vc.quant=='q1' | db$vc.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 ws.vc
 
-nws.vc <- xyplot(nwspeed~vc, groups=vc.quant,
-                 data=subset(db,subset=db$vc.quant=='q1' | db$vc.quant=='q3'),
+
+
+nws.vc <- xyplot(vc~nwspeed, groups=vc.quant,
+                 data=db,
+                 #subset(db,subset=db$vc.quant=='q1' | db$vc.quant=='q3'),
                  xlab=list(cex=1.5),
                  ylab=list(cex=1.5),
                  panel=function(x,y,groups,col=mycol2,...){
                    i <- 1
-                   for(g in unique(groups)){
+                   for(g in levels(as.factor(groups))){
                      id <- groups==g
-                     panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                     i <- i+1}},
+                     j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
                  scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                 key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 nws.vc
 
 
+
 wa.vc <- xyplot(wacc~vc, groups=vc.quant,
-                data=subset(db,subset=db$vc.quant=='q1' | db$vc.quant=='q3'),
+                data=db,
+                #subset(db,subset=db$vc.quant=='q1' | db$vc.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 wa.vc
 
 
+
 nwa.vc <- xyplot(nwacc~vc, groups=vc.quant,
-                data=subset(db,subset=db$vc.quant=='q1' | db$vc.quant=='q3'),
+                data=db,
+                #subset(db,subset=db$vc.quant=='q1' | db$vc.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 nwa.vc
 
 
 ##co subscale
 db$co.quant <- 'q'
-db$co.quant[which(db$co<=q1[4])] <- 'q1'
-db$co.quant[which(db$co>=q3[4])] <- 'q3'
+db$co.quant[which(db$co<=q1[6])] <- 'q1'
+db$co.quant[which(db$co>=q3[6])] <- 'q3'
 
-ws.co <- xyplot(wspeed~co, groups=co.quant,
-                data=subset(db,subset=db$co.quant=='q1' | db$co.quant=='q3'),
+ws.co <- xyplot(co~wspeed, groups=co.quant,
+                data=db,
+                #subset(db,subset=db$co.quant=='q1' | db$co.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 ws.co
 
 
-nws.co <- xyplot(nwspeed~co, groups=co.quant,
-                data=subset(db,subset=db$co.quant=='q1' | db$co.quant=='q3'),
+nws.co <- xyplot(co~nwspeed, groups=co.quant,
+                data=db,
+                #subset(db,subset=db$co.quant=='q1' | db$co.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                 key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                    cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 nws.co
+
 
 ##rs subscale
 db$rs.quant <- 'q'
-db$rs.quant[which(db$rs<=q1[4])] <- 'q1'
-db$rs.quant[which(db$rs>=q3[4])] <- 'q3'
+db$rs.quant[which(db$rs<=q1[7])] <- 'q1'
+db$rs.quant[which(db$rs>=q3[7])] <- 'q3'
 
-ws.rs <- xyplot(wspeed~rs,
+ws.rs <- xyplot(rs~wspeed,
                 groups=rs.quant,
-                data=subset(db,subset=db$rs.quant=='q1' | db$rs.quant=='q3'),
+                data=db,
+                #subset(db,subset=db$rs.quant=='q1' | db$rs.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                    cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 ws.rs
 
 
-nws.rs <- xyplot(nwspeed~rs,
+
+nws.rs <- xyplot(rs~nwspeed,
                 groups=rs.quant,
-                data=subset(db,subset=db$rs.quant=='q1' | db$rs.quant=='q3'),
+                data=db,
+                #subset(db,subset=db$rs.quant=='q1' | db$rs.quant=='q3'),
                 xlab=list(cex=1.5),
                 ylab=list(cex=1.5),
                 panel=function(x,y,groups,col=mycol2,...){
                   i <- 1
-                  for(g in unique(groups)){
+                  for(g in levels(as.factor(groups))){
                     id <- groups==g
-                    panel.xyplot(x[id],y[id],col=mycol2[i],pch=19)
-                    i <- i+1}},
-                scales=list(x=list(cex=1.5),y=list(cex=1.5)),
-                 key=list(text=list(c('Q1','Q3'),cex=1.5),
-                  points=list(pch=c(19,19),
-                  cex=c(1.5,1.5),col=c(mycol2[2],mycol2[1])),columns=2))
+                    j <- 1
+                    for(h in levels(db$class)){
+                      print(g)
+                      #print(h)
+                      idx <- db$class==h
+                      idx2 <- (id==TRUE & idx==TRUE)
+                      #print(id)
+                      #print(idx)
+                      #print(idx2)
+                    panel.xyplot(x[idx2],y[idx2],col=mycol2[j],pch=mypch[i],cex=2)
+                      j <- j+1
+                    }  
+                   i <- i+1}},
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)),
+                 key=list(text=list(c('Q1','Q3-Q1','Q3', 'l', 'm', 'h'),cex=1.5),
+                  points=list(pch=c(mypch[2],mypch[1],mypch[3],19,19,19),
+                  cex=c(1.5,1.5),
+                    col=c('black', 'black', 'black',mycol2)),
+                  columns=2))
 nws.rs
+
+
+
