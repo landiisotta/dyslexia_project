@@ -1247,4 +1247,68 @@ nws.rs <- xyplot(rs~nwspeed,
 nws.rs
 
 
+##DC graphs
+pdf(file=file.path(plot.path,'ws_dc.pdf'),width=7,height=7)
+ws.dc
+dev.off()
+
+pdf(file=file.path(plot.path,'nws_dc.pdf'),width=7,height=7)
+nws.dc
+dev.off()
+
+##SO graphs
+pdf(file=file.path(plot.path,'ws_so.pdf'),width=7,height=7)
+ws.so
+dev.off()
+
+pdf(file=file.path(plot.path,'nws_so.pdf'),width=7,height=7)
+nws.so
+dev.off()
+
+##MC graphs
+pdf(file=file.path(plot.path,'ws_mc.pdf'),width=7,height=7)
+ws.mc
+dev.off()
+
+pdf(file=file.path(plot.path,'nws_mc.pdf'),width=7,height=7)
+nws.mc
+dev.off()
+
+##CF graphs
+pdf(file=file.path(plot.path,'ws_cf.pdf'),width=7,height=7)
+ws.cf
+dev.off()
+
+pdf(file=file.path(plot.path,'nws_cf.pdf'),width=7,height=7)
+nws.cf
+dev.off()
+
+##VC graphs
+pdf(file=file.path(plot.path,'ws_vc.pdf'),width=7,height=7)
+ws.vc
+dev.off()
+
+pdf(file=file.path(plot.path,'nws_vc.pdf'),width=7,height=7)
+nws.vc
+dev.off()
+
+##CO graphs
+pdf(file=file.path(plot.path,'ws_co.pdf'),width=7,height=7)
+ws.co
+dev.off()
+
+pdf(file=file.path(plot.path,'nws_co.pdf'),width=7,height=7)
+nws.co
+dev.off()
+
+##RS graphs
+pdf(file=file.path(plot.path,'ws_rs.pdf'),width=7,height=7)
+ws.rs
+dev.off()
+
+pdf(file=file.path(plot.path,'nws_rs.pdf'),width=7,height=7)
+nws.rs
+dev.off()
+
+
 
