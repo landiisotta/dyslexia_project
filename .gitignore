@@ -22,5 +22,4 @@ vignettes/*.pdf
 *historygit.txt
 *.aux
 *.log
-*.tex
 *.gz
