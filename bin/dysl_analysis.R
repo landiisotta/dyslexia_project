@@ -1,6 +1,5 @@
 ##libraries
 library('lattice')
-library('robustbase')
 
 ##data path
 data.path <- file.path('/media/data/dyslexia_project/data')
@@ -10,6 +9,11 @@ plot.path <- file.path('/media/data/dyslexia_project/plot')
 load(file=file.path(data.path,'db.wisc3wisc4.RData'))
 load(file=file.path(data.path,'db.dysl.RData'))
 
+#######################################subjects out##############################
+##removing outliers visually selected (subjects 5, 673)
+out <- c('5', '673')
+db.out <- db.dysl[-which(db.dysl$id%in%out),]
+##save(file=file.path(data.path,'db.out.RData'),db.out)
 
 ##vectors with names to access data
 db.fact <- c('id','class','comorb','age')
@@ -17,25 +21,401 @@ dde.feat <- c('wspeed','wacc', 'nwspeed', 'nwacc')
 wisc.score <- c('IQ', 'VCI', 'PRI', 'WMI', 'PSI')
 wisc.sub <- c('dc', 'so', 'mc', 'cf', 'vc', 'co', 'rs')
 
+
+####################################################################################
+#########################functions for drawing graphs###############################
+####################################################################################
+
+##scatterplots
+##Arguments:
+## ## x: values for the x-axis
+## ## y: values for the y-axis
+## ## group: grouping variable within each panel
+## ## data: dataframe
+## ## mycol: vector of colors
+## ## key.text: vector of legend key names
+## ## tags: vector of tags to display for each dot
+
+scatter <- function(x, y, group, data, mycol, key.text, tags, loess=TRUE){
+  arguments <- as.list(match.call())
+  x = eval(arguments$x, data)
+  y = eval(arguments$y, data)
+  group = eval(arguments$group, data)
+  tags = eval(arguments$tags, data)
+  if(loess){
+plot <- xyplot(y~x,
+               groups=group,
+               data=data,
+               auto.key=TRUE,
+               xlab=list(sprintf('%s', as.character(arguments$x)),cex=1.5),
+               ylab=list(sprintf('%s', as.character(arguments$y)),cex=1.5),
+               panel=function(x,y,groups,col=mycol,text=key.text,tag=tags,...){
+                 i <- 1
+                 panel.abline(h=-2,lwd=2,col='grey80')
+                 panel.abline(v=-2,lwd=2,col='grey80')
+                 for(g in levels(groups)){
+                   id <- groups==g
+                   x1 <- x[id]
+                   y1 <- y[id]
+                   l <- lm(y1~x1)
+                   panel.abline(l,col=col[i],lwd=1.5)
+                   panel.xyplot(x1,y1,col=col[i],pch=19)
+                   ltext(x1,y1,labels=tags[id],offset=0.3,pos=2,cex=0.8)
+                   i <- i+1
+                 }
+               },
+               key=list(text=list(key.text,cex=1.5),
+                 points=list(pch=rep(19, length(key.text)),
+                   col=mycol,
+                   cex=rep(1.5,length(key.text))),
+                 columns=length(key.text)),
+               scales=list(x=list(cex=1.5),y=list(cex=1.5)))} else {
+                 plot <- xyplot(y~x,
+                                groups=group,
+                                data=data,
+                                auto.key=TRUE,
+                                xlab=list(sprintf('%s', as.character(arguments$x)),
+                                  cex=1.5),
+                                ylab=list(sprintf('%s', as.character(arguments$y)),
+                                  cex=1.5),
+                                panel=function(x,y,groups,col=mycol,
+                                  text=key.text,tag=tags,...){
+                                  i <- 1
+                                  #panel.abline(h=-2,lwd=2,col='grey80')
+                                  #panel.abline(v=7,lwd=2,col='grey80')
+                                  for(g in levels(groups)){
+                                    id <- groups==g
+                                    x1 <- x[id]
+                                    y1 <- y[id]
+                                    #panel.loess(x1,y1,col=col[i],lwd=2,span=1)
+                                    panel.xyplot(x1,y1,col=col[i],pch=19)
+                                    ltext(x1,y1,labels=tags[id],offset=0.3,pos=2,cex=0.8)
+                                    i <- i+1
+                                  }
+                                },
+                                key=list(text=list(key.text,cex=1.5),
+                                  points=list(pch=rep(19, length(key.text)),
+                                    col=mycol,
+                                    cex=rep(1.5,length(key.text))),
+                                  columns=length(key.text)),
+                                scales=list(x=list(cex=1.5),y=list(cex=1.5)))}    
+  return(plot)
+}
+
+
+##boxplots
+##Arguments:
+## ## x: values for the x-axis
+## ## y: values for the y-axis
+## ## cond: conditional variable in formula, if absent default=NULL
+## ## data: dataframe
+## ## fill: color for the filling of the boxplot
+## ## mycol: vector of colors for the dots
+## ## rectumb: color for the box and umbrella
+## ## key.text: vector of legend key names
+
+boxplt <- function(x,y,cond=NULL,data,fill,mycol,rectumb,key.text){
+  arguments <- as.list(match.call())
+  x = eval(arguments$x, data)
+  y = eval(arguments$y, data)
+  cond = eval(arguments$cond, data)
+  if(!is.null(cond)){
+  plot <- bwplot(y~x|factor(cond),
+                 data=data,
+                 fill=fill,
+                 xlab=list(sprintf('%s', as.character(arguments$x)),cex=1.5),
+                 ylab=list(sprintf('%s', as.character(arguments$y)),cex=1.5),
+                 par.settings=list(
+                   box.rectangle=list(lwd=2,col=rectumb),
+                   box.umbrella=list(lwd=2,col=rectumb),
+                   plot.symbol=list(pch=19,cex=1,col=rectumb)),
+                 panel=function(x,y,
+                 groups=x,...){
+                   i <- 1
+                   panel.bwplot(x,y,pch='|',...)
+                   for(g in levels(groups)){
+                     id <- groups==g 
+                     x1 <- x[id]
+                     y1 <- y[id]
+                     panel.stripplot(x1,y1,cex=1,pch=19,col=mycol[i],
+                                     jitter.data=TRUE,...)
+                     i <- i+1}
+                 },
+                 key=list(text=list(key.text,cex=1.5),
+                   points=list(pch=rep(19,length(levels(x))),col=mycol,
+                     rep(rectumb,length(levels(x))),cex=rep(1.5,length(levels(x)))),
+                   columns=length(levels(x))),
+                 scales=list(x=list(cex=1.5),y=list(cex=1.5)))} else{
+                   plot <- bwplot(y~x,
+                                  data=data,
+                                  horizontal=TRUE,
+                                  xlab=list(sprintf('%s', as.character(arguments$x)),
+                                    cex=1.5),
+                                  ylab=list(sprintf('%s', as.character(arguments$y)),
+                                    cex=1.5),
+                                  par.settings=list(
+                                    box.rectangle=list(lwd=2,col=rectumb),
+                                    box.umbrella=list(lwd=2,col=rectumb)),
+                                  panel=function(x,y,...){
+                                    panel.bwplot(x,y,pch='|',fill=fill,...)
+                                    i <- 1
+                                    for(g in levels(y)){
+                                      id <- y==g
+                                      x1 <- x[id]
+                                      y1 <- y[id]
+                                    panel.stripplot(x1,y1,cex=1,pch=19,col=mycol[i],
+                                     jitter.data=TRUE,...)
+                                    i <- i+1}},
+                                  key=list(text=list(key.text,cex=1.5),
+                                    points=list(pch=rep(19,length(levels(y))),col=mycol,
+                                      rep(rectumb,length(levels(y))),
+                                      cex=rep(1.5,length(levels(y)))),
+                                    columns=length(levels(y))),
+                                  scales=list(x=list(cex=1.5),y=list(cex=1.5)))}
+    return(plot)
+}
+
+
+##pairs
+##Arguments:
+## ## data: dataframe to plot by pair
+## ## mycol: vector of colors
+## ## class: class vector for dot colors
+
+pair <- function(data,mycol,class){
+panel.cor <- function(x, y, digits=3, cex.cor=2, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- cor(x, y)
+    txt <- formatC(r, digits=2, format='f')
+    text(0.5, 0.5, txt, cex = 2.0)
+}
+# Plot #2: correlation in lower
+return(pairs(data,
+             lower.panel=panel.cor,
+             main='',
+             cex.labels=2,
+             upper.panel=function(x,y,...){
+               i <- 1
+               for(g in levels(class)){
+                 id <- class==g
+                 x1 <- x[id]
+                 y1 <- y[id]
+                 panel.smooth(x1,y1,pch=19,col=mycol[i],span=1)
+                 i <- i+1}},
+             cex.axis=1.5))
+}
+
+######################################################################################
+######################################################################################
+######################################################################################
+
+######PLOTS#####
+
+##auxiliary vectors
 ##color vectors
 mycol <- colors()[c(139,490,552)]##h-->3, m-->2, l-->1
+fill <- 'grey90'
+rectumb <- 'black'
+key.text <- c('l','m','h')
 
-##databases tmp for plots
-stk.db_dde <- stack(subset(db.dysl,select=c(dde.feat)))
+##databases tmp for boxplots
+stk.dde <- stack(subset(db.dysl,select=c(dde.feat)))
+stk.dde$class <- rep(db.dysl$class,4)
+stk.dde.out<- stack(subset(db.out,select=c(dde.feat)))
+stk.dde.out$class <- rep(db.out$class,4)
 
-#######################################subjects out##############################
-##removing outliers visually selected (subjects 5, 673)
-out1 <- c('5', '673')
-db.dysl.no_out <- db.dysl[-which(db.dysl$id%in%out1),]
-##save(file=file.path(data.path,'db.dysl.no_out.RData'),db.dysl.no_out)
-
-stk.db_dde.no_out<- stack(subset(db.dysl.no_out,select=c(dde.feat)))
-stk.db_wisc.no_out<- stack(subset(db.dysl.no_out,select=c(wisc.sub)))
+stk.wisc <- stack(subset(db.dysl,select=c(wisc.sub)))
+stk.wisc$class <- rep(db.dysl$class,7)
+stk.wisc.out<- stack(subset(db.out,select=c(wisc.sub)))
+stk.wisc.out$class <- rep(db.out$class,7)
+######################################################################################
+######################################################################################
 
 
+##SCATTERPLOTS
+
+##dde scores
+dde.w <- scatter(wacc,wspeed, group=class, data=db.out,
+                 mycol=mycol,
+                 key.text=c('l','m','h'),
+                 #tags=round(age/12)
+                 )
+dde.w
+
+dde.nw <- scatter(nwacc,nwspeed, group=class, data=db.out,
+                  mycol=mycol,
+                  key.text=c('l','m','h'),
+                  #tags=round(age/12))
+                  )
+dde.nw
+
+scatter(nwacc,wacc, group=class, data=db.out,
+        mycol=mycol,
+        key.text=c('l','m','h'),
+        tags=round(age/12))
+
+scatter(nwspeed,wspeed, group=class, data=db.out,
+        mycol=mycol,
+        key.text=c('l','m','h'),
+        tags=round(age/12))
+
+##dde scores vs wisc subscales
+p.wdc <- scatter(dc,wspeed, group=class, data=db.out,
+                 mycol=mycol,
+                 key.text=key.text,
+                 loess=FALSE)
+p.wdc
+
+p.nwdc <- scatter(dc,nwspeed, group=class, data=db.out,
+                  mycol=mycol,
+                  key.text=key.text,
+                  loess=FALSE)
+p.nwdc
+
+
+p.wso <- scatter(so,wspeed, group=class, data=db.out,
+                 mycol=mycol,
+                 key.text=key.text,
+                 loess=FALSE)
+p.wso
+
+p.nwso <- scatter(so,nwspeed, group=class, data=db.out,
+                  mycol=mycol,
+                  key.text=key.text,
+                  loess=FALSE)
+p.nwso
+
+
+p.wmc <- scatter(mc,wspeed, group=class, data=db.out,
+                 mycol=mycol,
+                 key.text=key.text,
+                 loess=FALSE)
+p.wmc
+
+p.nwmc <- scatter(mc,nwspeed, group=class, data=db.out,
+                  mycol=mycol,
+                  key.text=key.text,
+                  loess=FALSE)
+p.nwmc
+
+
+p.wcf <- scatter(cf,wspeed, group=class, data=db.out,
+                 mycol=mycol,
+                 key.text=key.text,
+                 loess=FALSE)
+p.wcf
+
+p.nwcf <- scatter(cf,nwspeed, group=class, data=db.out,
+                  mycol=mycol,
+                  key.text=key.text,
+                  loess=FALSE)
+p.nwcf
+
+
+p.wvc <- scatter(vc,wspeed, group=class, data=db.out,
+                 mycol=mycol,
+                 key.text=key.text,
+                 loess=FALSE)
+p.wvc
+
+p.nwvc <- scatter(vc,nwspeed, group=class, data=db.out,
+                  mycol=mycol,
+                  key.text=key.text,
+                  loess=FALSE)
+p.nwvc
+
+
+p.wco <- scatter(co,wspeed, group=class, data=db.out,
+                 mycol=mycol,
+                 key.text=key.text,
+                 loess=FALSE)
+p.wco
+
+p.nwco <- scatter(co,nwspeed, group=class, data=db.out,
+                  mycol=mycol,
+                  key.text=key.text,
+                  loess=FALSE)
+p.nwco
+
+
+p.wrs <- scatter(rs,wspeed, group=class, data=db.out,
+                 mycol=mycol,
+                 key.text=key.text,
+                 loess=FALSE)
+p.wrs
+
+p.nwrs <- scatter(rs,nwspeed, group=class, data=db.out,
+                  mycol=mycol,
+                  key.text=key.text,
+                  loess=FALSE)
+p.nwrs
+
+
+
+
+##BOXPLOTS
+
+##boxplot of age
+bp.age <- boxplt(x=age,y=class,cond=NULL,
+                 data=db.dysl,fill=fill,
+                 mycol=mycol,rectumb=rectumb,
+                 key.text=key.text) 
+bp.age
+
+
+bp.wisc <- boxplt(x=class,y=values,cond=ind,data=stk.wisc.out,fill=fill,
+                  mycol=mycol,rectumb=rectumb, key.text=key.text)
+bp.wisc
+
+
+bp.dde <- boxplt(x=class,y=values,cond=ind,data=stk.dde.out,
+                  fill=fill, mycol=mycol, rectumb=rectumb, key.text=key.text)
+bp.dde
+
+
+##PAIRS
+pair.g <- pair(subset(db.out, select=c(dde.feat,wisc.sub)), class=db.out$class,
+               mycol=mycol)
+
+    
 ##################################################################################
 ##################################################################################
 ##################################################################################
+
+pairwise.t.test(db.out$cf,db.out$class,p.adjust.method='bonferroni')
+pairwise.t.test(db.out$dc,db.out$class,p.adjust.method='bonferroni')
+pairwise.t.test(db.out$so,db.out$class,p.adjust.method='bonferroni')
+pairwise.t.test(db.out$mc,db.out$class,p.adjust.method='bonferroni')
+pairwise.t.test(db.out$vc,db.out$class,p.adjust.method='bonferroni')
+pairwise.t.test(db.out$co,db.out$class,p.adjust.method='bonferroni')
+pairwise.t.test(db.out$rs,db.out$class,p.adjust.method='bonferroni')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 db.dysl <- db.wisc3wisc4 
 
@@ -69,6 +449,26 @@ bw.age <- bwplot(db.dysl$age,
                    scales=list(x=list(cex=1.5),y=list(cex=1.5)))
 bw.age
 
+bwplot(db.dysl$class~db.dysl$age,
+       fill='grey90',
+       pch='|',
+       horizontal=TRUE,
+       xlab=list('age',cex=1.5),
+       par.settings=list(
+         box.rectangle=list(col='black',lwd=1.5),
+         box.umbrella=list(col='black',lwd=1.5)),
+       panel=function(x,y,...){
+         panel.bwplot(x,y,pch='|',fill='grey90')
+         i <- 1
+         for(g in levels(y)){
+           print(levels(y))
+         id <- y==g
+         x1 <- x[id]
+         y1 <- y[id]
+         panel.points(x1,y1,pch=19,col=mycol[i])
+       i <- i+1}},
+       scales=list(x=list(cex=1.5),y=list(cex=1.5)))
+
 pdf(file=file.path(plot.path,'bw_age.pdf'),width=7,height=2)
 bw.age
 dev.off()
@@ -89,11 +489,18 @@ panel.cor <- function(x, y, digits=3, cex.cor=2, ...)
 # Plot #2: correlation in lower
 pairs(subset(db.dysl,select=c(dde.feat,wisc.sub)),
       lower.panel=panel.cor,
-      pch=21,
+      #pch=21,
       main='',
       cex.labels=2,
       bg=mycol[unclass(db.dysl$class)],
-      panel=panel.smooth,
+      upper.panel=function(x,y,...){
+        i <- 1
+        for(g in levels(db.dysl$class)){
+          id <- db.dysl$class==g
+          x1 <- x[id]
+          y1 <- y[id]
+        panel.smooth(x1,y1,pch=19,col=mycol[i])
+        i <- i+1}},
       cex.axis=1.5)
 
 ##pairs in pdf
@@ -310,9 +717,9 @@ dev.off()
 
 
 ##boxplot by class and dde scores without out1
-stk.db_dde.no_out$class <- rep(db.dysl.no_out$class,4)
 
-bw.dde.no_out_class <- bwplot(values~class|factor(ind),
+
+bw.dde.no_out_class2 <- bwplot(values~class|factor(ind),
                         data=stk.db_dde.no_out,
                         fill='grey80',
                         ylab=list('sigma scores',cex=1.5),
@@ -320,7 +727,7 @@ bw.dde.no_out_class <- bwplot(values~class|factor(ind),
                           box.rectangle=list(lwd=2,col='black'),
                           box.umbrella=list(lwd=2,col='black')),
                         panel=function(x,y,col=mycol,
-                          groups=stk.db_dde.no_out$class,...){
+                          groups=x,...){
                           i <- 1
                           if(panel.number()==1){
                             panel.bwplot(x,y,pch='|',...)
@@ -370,7 +777,7 @@ bw.dde.no_out_class <- bwplot(values~class|factor(ind),
                         scales=list(x=list(
                                       #labels=c('l','m','h')
                                       cex=1.5),y=list(cex=1.5)))
-bw.dde.no_out_class
+bw.dde.no_out_class2
 
 ##outliers:
 ##nwacc--> none
@@ -592,9 +999,9 @@ scat.dde_w <- xyplot(wspeed~wacc,
                      data=db.dysl,
                      auto.key=TRUE,
                                         #xlim=c(-12,2),
-                     xlab=list('wacc',cex=1.5),
+                     xlab=list('nwspeed',cex=1.5),
                      ylab=list('wspeed',cex=1.5),
-                     panel=function(x,y,groups,col=mycol,...){
+                     panel=function(x,y,groups,col=mycol,age=db.dysl$comorb,...){
                        i <- 1
                        panel.abline(h=-2,lwd=2,col='grey80')
                        panel.abline(v=-2,lwd=2,col='grey80')
@@ -604,6 +1011,7 @@ scat.dde_w <- xyplot(wspeed~wacc,
                          y1 <- y[id]
                          panel.loess(x1,y1,col=col[i],lwd=2)
                          panel.xyplot(x1,y1,...,col=col[i],pch=19)
+                         ltext(x1,y1,labels=age[id],offset=0.2,pos=1)
                          i <- i+1
                        }
                      },
@@ -1312,3 +1720,84 @@ dev.off()
 
 
 
+
+
+
+
+bwplot(values~class|factor(ind),
+       data=stk.db_dde.no_out,
+       fill='grey80',
+       ylab=list('sigma scores',cex=1.5),
+       par.settings=list(
+         box.rectangle=list(lwd=2,col='black'),
+         box.umbrella=list(lwd=2,col='black')),
+       panel=function(x,y,col=mycol,
+         groups=x,...){
+         i <- 1
+         panel.bwplot(x,y,pch='|',...)
+         for(g in levels(groups)){
+           id <- groups==g 
+           x1 <- x[id]
+           y1 <- y[id]
+           panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+           print(boxplot.stats(y1)$out)
+           i <- i+1}},
+       key=list(text=list(c('l','m','h'),cex=1.5),
+                          points=list(pch=c(19,19,19),col=mycol,
+                            rep('black',3),cex=c(1.5,1.5,1.5)),
+                          columns=3),
+                        scales=list(x=list(
+                                      #labels=c('l','m','h')
+                                      cex=1.5),y=list(cex=1.5)))
+
+
+
+
+                          if(panel.number()==1){
+                            panel.bwplot(x,y,pch='|',...)
+                            for(g in levels(groups)){
+                              id <- groups==g 
+                              x1 <- x[id]
+                              y1 <- y[id]
+                              panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+                              print(boxplot.stats(y1)$out)
+                              i <- i+1}
+                          }
+                          if(panel.number()==2){
+                            panel.bwplot(x,y,pch='|',...)
+                            for(g in levels(groups)){
+                              id <- groups==g 
+                              x1 <- x[id]
+                              y1 <- y[id]
+                              panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+                              print(boxplot.stats(y1)$out)
+                              i <- i+1}
+                          }
+                          if(panel.number()==3){
+                            panel.bwplot(x,y,pch='|',...)
+                            for(g in levels(groups)){
+                              id <- groups==g 
+                              x1 <- x[id]
+                              y1 <- y[id]
+                              panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+                              print(boxplot.stats(y1)$out)
+                              i <- i+1}
+                          }
+                          if(panel.number()==4){
+                            panel.bwplot(x,y,pch='|',...)
+                            for(g in levels(groups)){
+                              id <- groups==g 
+                              x1 <- x[id]
+                              y1 <- y[id]
+                              panel.points(x1,y1,cex=1,pch=19,col=mycol[i],...)
+                              print(boxplot.stats(y1)$out)
+                              i <- i+1}
+                          }
+                        },
+                        key=list(text=list(c('l','m','h'),cex=1.5),
+                          points=list(pch=c(19,19,19),col=mycol,
+                            rep('black',3),cex=c(1.5,1.5,1.5)),
+                          columns=3),
+                        scales=list(x=list(
+                                      #labels=c('l','m','h')
+                                      cex=1.5),y=list(cex=1.5)))
