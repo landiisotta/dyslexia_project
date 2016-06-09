@@ -4,6 +4,7 @@ library(caret)
 library(lmtest)
 library(pscl)
 library(ROCR)
+library(xtable)
 
 source('/media/data/dyslexia_project/bin/mcc.R')
 
@@ -118,39 +119,66 @@ db12$class <- as.factor(db12$class)
 ##wspeed
 kruskal.test(db.rid$wspeed,db.rid$class)
 
-kruskal.test(db.merge$wspeed,db.merge$class)
+kwsm <- kruskal.test(db.merge$wspeed,db.merge$class)
 
 kruskal.test(db01$wspeed,db01$class)
 t.test(db01$wspeed~db01$class)
 
-kruskal.test(db01.rid$wspeed,db01.rid$class)
+kws01 <- kruskal.test(db01.rid$wspeed,db01.rid$class)
 t.test(db01.rid$wspeed~db01.rid$class)
+
+kws12 <- kruskal.test(db12$wspeed,db12$class)
 
 ##nwspeed
 kruskal.test(db.rid$nwspeed,db.rid$class)
 
-kruskal.test(db.merge$nwspeed,db.merge$class)
+knwsm <- kruskal.test(db.merge$nwspeed,db.merge$class)
 
-kruskal.test(db01$nwspeed,db01$class)
+knws01 <- kruskal.test(db01$nwspeed,db01$class)
 t.test(db01$nwspeed~db01$class)
+
+knws12 <- kruskal.test(db12$nwspeed,db12$class)
 
 ##wacc
 kruskal.test(db.rid$wacc,db.rid$class)
 
-kruskal.test(db.merge$wacc,db.merge$class)
+kwam <- kruskal.test(db.merge$wacc,db.merge$class)
 
-kruskal.test(db01$wacc,db01$class)
+kwa01 <- kruskal.test(db01$wacc,db01$class)
 t.test(db01$wacc~db01$class)
 
+kwa12 <- kruskal.test(db12$wacc,db12$class)
 
 ##nwacc
 kruskal.test(db.rid$nwacc,db.rid$class)
 
-kruskal.test(db.merge$nwacc,db.merge$class)
+knwam <- kruskal.test(db.merge$nwacc,db.merge$class)
 
-kruskal.test(db01$nwacc,db01$class)
+knwa01 <- kruskal.test(db01$nwacc,db01$class)
 t.test(db01$nwacc~db01$class)
 
+knwa12 <- kruskal.test(db12$nwacc,db12$class)
+
+dde.score <- c('word speed', 'non-word speed', 'word accuracy', 'non-word accuracy')
+chi.sq <- c(round(kws01$statistic,2),round(knws01$statistic,2),
+            round(kwa01$statistic,2),round(knwa01$statistic,2),
+            round(kws12$statistic,2),round(knws12$statistic,2),
+            round(kwa12$statistic,2),round(knwa12$statistic,2),
+            round(kwsm$statistic,2),round(knwsm$statistic,2),
+            round(kwam$statistic,2),round(knwam$statistic,2))
+p.value <- c(round(kws01$p.value,2),round(knws01$p.value,2),
+            round(kwa01$p.value,2),round(knwa01$p.value,2),
+             round(kws12$p.value,3),round(knws12$p.value,4),
+            round(kwa12$p.value,3),round(knwa12$p.value,3),
+             round(kwsm$p.value,3),round(knwsm$p.value,3),
+            round(kwam$p.value,3),round(knwam$p.value,3))
+table01 <- data.frame(dde.score,chi.sq[1:4],p.value[1:4])
+table12 <- data.frame(dde.score,chi.sq[5:8],p.value[5:8])
+tablem <- data.frame(dde.score,chi.sq[9:12],p.value[9:12])
+
+print(xtable(table01,digits=2,quote=FALSE),include.rownames=FALSE)
+print(xtable(table12,digits=3,quote=FALSE),include.rownames=FALSE)
+print(xtable(tablem,digits=2,quote=FALSE),include.rownames=FALSE)
 
 ## ks.test(db.rid$wspeed[which(db.rid$class==0)],db.rid$wspeed[which(db.rid$class==1)])
 ## t.test(db.rid$wspeed[which(db.rid$class==0)],db.rid$wspeed[which(db.rid$class==1)])
@@ -187,8 +215,13 @@ t.test(db01$nwacc~db01$class)
 
 cor.test(db.rid$nwspeed,db.rid$wspeed)##p-value = 3.741e-12, cor=0.637497
 cor.test(db.rid$nwacc,db.rid$wacc)##p-value = 3.366e-07, cor=0.4952018
-cor.test(db.rid$nwspeed,db.rid$nwacc)
-cor.test(db.rid$wacc,db.rid$wspeed)
+id.0 <- which(db.merge$class==0)
+id.1 <- which(db.merge$class==1)
+cor.test(db.merge$nwspeed[id.0],db.merge$nwacc[id.0])
+cor.test(db.merge$wacc[id.0],db.merge$wspeed[id.0])
+
+cor.test(db.merge$nwspeed[id.1],db.merge$nwacc[id.1])
+cor.test(db.merge$wacc[id.1],db.merge$wspeed[id.1])
 
 ##values' distribution
 stk.dde <- stack(subset(db.rid,select=c(wspeed)))
@@ -393,6 +426,27 @@ table(as.integer(pred.rid>0.5),db.test$class)
   ##    0  1
   ## 0 21  3
   ## 1  4  9
+
+
+##full model
+form.full <- class~(wspeed+nwspeed)*(cf+dc+rs+co+vc+so+mc)
+g.full <- glm(form.full, family=binomial, data=db.train)
+summary(g.full)
+table(as.integer(g.full$fitted.values>0.5),db.train$class)
+
+form.full2 <- class~(wspeed+nwspeed)*(cf+dc+rs)
+g.full2 <- glm(form.full2, family=binomial, data=db.train)
+
+form.null <- class~1
+g.null <- glm(form.null, family=binomial, data=db.train)
+
+anova(g.vis,g.null,test='Chisq')
+anova(g.full,g.full2, test='Chisq')
+anova(g.full2,g.vis,test='Chisq')
+anova(g.vis,test='Chisq')
+
+anova(g.verb,g.null,test='Chisq')
+anova(g.mc,g.null,test='Chisq')
 
 ##3.2)model evaluation adn diagnostic
 anova(g.rid,g.vis,test='Chisq')
